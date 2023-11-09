@@ -6,6 +6,83 @@
   <title>Document</title>
 </head>
 <body>
-  Hello world
+  <% if (user) { %>
+    <div><a href="/log-out">Log out</a></div>
+    <% if (user.membership) { %>
+      <p>You're a member :D</p>
+    <% } else { %>
+      <div>
+        <form action="/membership" method="POST">
+          <label for="password">
+            Enter the secret member password:
+            <input type="password" id="password" name="password">
+          </label>
+          <button type="submit">Submit</button>
+        </form>
+        <% if (errorMsg) { %>
+          <p><%= errorMsg %></p>
+        <% } %>
+      </div>
+    <% } %>
+
+    <% if (user.admin) { %>
+      <p>You're an admin :O</p>
+    <% } else { %>
+      <div>
+        <form action="/admin" method="POST">
+          <label for="password">
+            Enter the secret admin password:
+            <input type="password" id="password" name="password">
+          </label>
+          <button type="submit">Submit</button>
+        </form>
+        <% if (errorMsg) { %>
+          <p><%= errorMsg %></p>
+        <% } %>
+      </div>
+    <% } %>
+
+    <h1>Welcome back, <%= user.firstName %></h1>
+    <h2>Message board</h2>
+    <form action="/add-message" method="POST">
+      <label for="message">
+        Add new message:
+        <input type="text" id="message" name="message" placeholder="Type your message here">
+      </label>
+      <button type="submit">Send</button>
+    </form>
+    <ul>
+      <% messages.forEach((message) => { %>
+        <% if (user.admin) { %>
+          <li>
+            <span><%= `${message.timestamp.getHours()}:${message.timestamp.getMinutes().length === 2 ? message.timestamp.getMinutes() : message.timestamp.getMinutes().toString().padStart(2, '0')}` %> <%= message.author %>: <%= message.text %></span>
+            <form action="<%= `/delete/${message._id}` %>" method="POST">
+              <button type="submit">Delete</button>
+            </form>
+          </li>
+        <% } else { %>
+          <% if (user.membership) { %>
+            <li><%= `${message.timestamp.getHours()}:${message.timestamp.getMinutes().length === 2 ? message.timestamp.getMinutes() : message.timestamp.getMinutes().toString().padStart(2, '0')}` %> <%= message.author %>: <%= message.text %></li>
+          <% } else { %>
+            <li>Anonymous: <%= message.text %></li>
+          <% } %>
+        <% } %>
+      <% }); %>
+    </ul>
+  <% } else { %>
+    <h1>Log in</h1>
+    <form action="/log-in" method="POST">
+      <label for="username">
+        Email:
+        <input type="email" id="username" name="username" placeholder="Email">
+      </label>
+      <label for="password">
+        Password:
+        <input type="password" id="password" name="password">
+      </label>
+      <button type="submit">Log in</button>
+    </form>
+    <p>Not a member? <a href="/sign-up">Sign up</a></p>
+  <% } %>
 </body>
 </html>

@@ -23,7 +23,8 @@ const User = mongoose.model(
 		lastName: { type: String, required: true },
 		email: { type: String, required: true },
 		password: { type: String, required: true },
-		membership: { type: Boolean, required: true }
+		membership: { type: Boolean, required: true },
+    admin: {type: Boolean, required: false}
 	})
 );
 
@@ -53,6 +54,7 @@ passport.use(
 			if (!match) {
 				return done(null, false, { message: 'Incorrect password' });
 			}
+			return done(null, user);
 		} catch (err) {
 			return done(err);
 		}
@@ -79,9 +81,115 @@ app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));
 
 // routes
-app.get('/', (req, res) => {
-  res.render('index');
+app.get('/', async (req, res) => {
+	const messages = await Message.find().sort({ timestamp: 1 }).exec();
+	res.render('index', {
+		user: req.user,
+		messages: messages,
+		errorMsg: null
+	});
+});
+
+app.post(
+	'/log-in',
+	passport.authenticate('local', {
+		successRedirect: '/',
+		failureRedirect: '/'
+	})
+);
+
+app.get('/log-out', (req, res, next) => {
+	req.logout((err) => {
+		if (err) {
+			return next(err);
+		}
+		res.redirect('/');
+	});
+});
+
+app.post('/membership', async (req, res) => {
+	if (req.body.password === 'cats') {
+		const user = new User({
+			_id: req.user._id,
+			firstName: req.user.firstName,
+			lastName: req.user.lastName,
+			email: req.user.email,
+			password: req.user.password,
+			membership: true
+		});
+		await User.findByIdAndUpdate(req.user._id, user);
+		res.redirect('/');
+	} else {
+	  const messages = await Message.find().sort({ timestamp: 1 }).exec();
+		res.render('index', {
+			user: req.user,
+			messages: messages,
+			errorMsg: 'Incorrect password! :P'
+		});
+	}
+});
+
+app.post('/admin', async (req, res) => {
+	if (req.body.password === 'admin') {
+		const user = new User({
+			_id: req.user._id,
+			firstName: req.user.firstName,
+			lastName: req.user.lastName,
+			email: req.user.email,
+			password: req.user.password,
+			membership: true,
+      admin: true
+		});
+		await User.findByIdAndUpdate(req.user._id, user);
+		res.redirect('/');
+	} else {
+	  const messages = await Message.find().sort({ timestamp: 1 }).exec();
+		res.render('index', {
+			user: req.user,
+			messages: messages,
+			errorMsg: 'Incorrect password! :P'
+		});
+	}
+});
+
+app.post('/add-message', async (req, res) => {
+	const message = new Message({
+		author: req.user.firstName,
+		text: req.body.message,
+		timestamp: new Date()
+	});
+	await message.save();
+	res.redirect('/');
+});
+
+app.post('/delete/:id', async (req, res) => {
+  await Message.findByIdAndDelete(req.params.id);
+  res.redirect('/');
 })
 
+app.get('/sign-up', (req, res) => {
+	res.render('sign-up-form', {
+		title: 'Sign-up'
+	});
+});
+
+app.post('/sign-up', (req, res, next) => {
+	bcrypt.hash(req.body.password, 10, async (err, hashedPassword) => {
+		if (err) {
+			return next(err);
+		} else {
+			const user = new User({
+				firstName: req.body.firstName,
+				lastName: req.body.lastName,
+				email: req.body.email,
+				password: hashedPassword,
+				membership: false
+			});
+			await user.save();
+			res.redirect('/');
+		}
+	});
+});
+
 // start server
-app.listen(3000, () => console.log('app listening on port 3000!'))
+app.listen(3000, () => console.log('app listening on port 3000!'));
